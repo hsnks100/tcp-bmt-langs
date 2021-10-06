@@ -1,0 +1,14 @@
+/home/dire/tcp-bmt-langs/rust-async/target/debug/deps/log-5083035957e9c45c.rmeta: /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/lib.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/macros.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/serde.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/mod.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/error.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/key.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/source.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/value.rs
+
+/home/dire/tcp-bmt-langs/rust-async/target/debug/deps/liblog-5083035957e9c45c.rlib: /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/lib.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/macros.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/serde.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/mod.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/error.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/key.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/source.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/value.rs
+
+/home/dire/tcp-bmt-langs/rust-async/target/debug/deps/log-5083035957e9c45c.d: /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/lib.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/macros.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/serde.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/mod.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/error.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/key.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/source.rs /home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/value.rs
+
+/home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/lib.rs:
+/home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/macros.rs:
+/home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/serde.rs:
+/home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/mod.rs:
+/home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/error.rs:
+/home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/key.rs:
+/home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/source.rs:
+/home/dire/.cargo/registry/src/github.com-1ecc6299db9ec823/log-0.4.14/src/kv/value.rs:
