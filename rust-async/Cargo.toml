@@ -5,9 +5,8 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
 
-bytebuffer-rs = "0.3.1"
-bytes = "1"
-async-std = "1.10.0"
-tokio = {version = "1.12.0", features = ["full"]}
+[dependencies]
+async-std = "*"
+bytes = "*"
+anyhow = "*"
