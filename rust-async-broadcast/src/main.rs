@@ -7,6 +7,10 @@ use async_std::sync::{Arc, Mutex};
 use async_std::channel::{Receiver, Sender, self};
 use std::collections::HashMap;
 
+extern crate time;
+use time::PreciseTime;
+
+
 //use bytes::{Bytes, BytesMut};
 use bytes::{Bytes, BytesMut, Buf, BufMut};
 use core::convert::TryInto;
@@ -43,7 +47,7 @@ async fn broadcaster(recv: Receiver<BroadcastCommand>) {
     let mut members = HashMap::new();
 
     let mut sendCount: i32 = 0;
-
+    let mut start = PreciseTime::now();
     // 여기선 event를 받아서 뭐 member에 넣거나 send하거나 등등 하고.
     loop {
         match recv.recv().await.unwrap() {
@@ -61,7 +65,16 @@ async fn broadcaster(recv: Receiver<BroadcastCommand>) {
                         sendCount += 1;
                     //}
                 }
-                println!("SendMessage: {}", sendCount);
+
+                // whatever you want to do
+                let end = PreciseTime::now();
+                let tt = start.to(end);
+                if tt >= 1 {
+                    println!("SendMessage: {}/s", sendCount/tt);
+                    start = PreciseTime::now();
+                    sendCount = 0;
+                }
+                // println!("{} seconds for whatever you did.", start.to(end));
             }
             BroadcastCommand::Exit => {
                 break;
@@ -111,10 +124,11 @@ async fn connection(sender: Sender<BroadcastCommand>, addr: String, mut stream: 
                         //     return;
                         // }
                         // let b = Bytes::from_static(&hb[0..need_bytes]);
-                        let mut sendData = recv_buffer2.clone();
-                        sendData.split_off(need_bytes);
-                        sender.send(BroadcastCommand::SendMessage(stream.clone(),
-                        sendData.freeze())).await.unwrap();
+                        for _ in 1..5 {
+                            let mut sendData = recv_buffer2.clone();
+                            sendData.split_off(need_bytes);
+                            sender.send(BroadcastCommand::SendMessage(stream.clone(), sendData.freeze())).await.unwrap();
+                        }
                         need_bytes = headerSize;
                         step = 1;
                     }
