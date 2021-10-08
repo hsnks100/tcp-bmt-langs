@@ -23,9 +23,6 @@ enum UsersCommand {
 }
 async fn manage_users(recv: Receiver<UsersCommand>) {
     let mut members: HashMap<String, Sender<BroadcastCommand>>= HashMap::new();
-    let mut sendCount: i32 = 0;
-    // let mut start = PreciseTime::now();
-    let mut start = get_unix_time();
     loop {
         match recv.recv().await.unwrap() {
             UsersCommand::AddMember(addr, member) => {
@@ -41,13 +38,6 @@ async fn manage_users(recv: Receiver<UsersCommand>) {
                 for (k, v) in &mut members {
                     let mut sendData = bytes.clone();
                     v.send(BroadcastCommand::SendMessage(sendData)).await.unwrap();
-                    sendCount += 1;
-                }
-                let flowTime = get_unix_time() - start;
-                if flowTime >= 1000 {
-                    println!("SendMessage: {}/s", (sendCount * 1000) as u128/flowTime);
-                    start = get_unix_time();
-                    sendCount = 0;
                 }
                 // sender.send(BroadcastCommand::SendMessage(sendData.freeze())).await.unwrap();
             }
@@ -64,14 +54,38 @@ enum BroadcastCommand {
     Exit,
 }
 
+enum AsmCommand {
+    AccBytes(i64)
+}
+async fn assembleBytes(recv: Receiver<AsmCommand>) {
+    // let mut totalCount: i64 = 0;
+    let mut sendCount: i64 = 0;
+    let mut start = get_unix_time();
+    loop {
+        match recv.recv().await.unwrap() {
+            AsmCommand::AccBytes(v) => {
+                sendCount += v;
+                let flowTime = get_unix_time() - start;
+                if flowTime >= 1000 {
+                    println!("SendMessage: {}/s", (sendCount * 1000) as u128/flowTime);
+                    start = get_unix_time();
+                    sendCount = 0;
+                }
+                // totalCount += v;
+            }
+        }
+    }
+}
 async fn entrypoint() -> anyhow::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:8080").await?;
     let mut members: HashMap<String, Sender<BroadcastCommand>>= HashMap::new();
     let (mgrsender, mgrrecver) = channel::unbounded(); 
     task::spawn(manage_users(mgrrecver));
+    let (asm_sender, asm_recver) = channel::unbounded(); 
+    task::spawn(assembleBytes(asm_recver));
     while let Ok((mut conn, addr)) = listener.accept().await {
         let (sender, recver) = channel::unbounded();
-        let sendChannel = task::spawn(sender_per_client(recver, conn.clone()));
+        let sendChannel = task::spawn(sender_per_client(recver, conn.clone(), asm_sender.clone()));
         mgrsender.send(UsersCommand::AddMember(addr.to_string(), sender.clone())).await?;
         task::spawn(connection(addr.to_string(), conn.clone(), sender.clone(), mgrsender.clone()));
     } 
@@ -87,7 +101,8 @@ fn get_unix_time() -> u128 {
         .expect("Time went backwards");
     return since_the_epoch.as_millis();
 }
-async fn sender_per_client(recv: Receiver<BroadcastCommand>, mut v: TcpStream) {
+async fn sender_per_client(recv: Receiver<BroadcastCommand>, mut v: TcpStream, asm_sender:
+                           Sender<AsmCommand>) {
     // let mut members = Vec::new();
 
 
@@ -97,6 +112,7 @@ async fn sender_per_client(recv: Receiver<BroadcastCommand>, mut v: TcpStream) {
             BroadcastCommand::SendMessage(bytes) => {
                 // no thread version
                 v.write_all(&bytes).await;
+                asm_sender.send(AsmCommand::AccBytes(1)).await.unwrap();
             }
             BroadcastCommand::Exit => {
                 println!("EXIT MESSAGE");
