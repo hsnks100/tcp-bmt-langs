@@ -11,3 +11,5 @@ time = "*"
 async-std = "*"
 bytes = "*"
 anyhow = "*"
+futures = "0.3.1"
+

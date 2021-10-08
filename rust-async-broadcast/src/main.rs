@@ -6,6 +6,8 @@ use async_std::net::{TcpListener, TcpStream};
 use async_std::sync::{Arc, Mutex};
 use async_std::channel::{Receiver, Sender, self};
 use std::collections::HashMap;
+use futures::join;
+
 // use std::time::Duration;
 
 
@@ -30,7 +32,7 @@ async fn entrypoint() -> anyhow::Result<()> {
     let (sender, recver) = channel::unbounded();
     let broadcaster = task::spawn(broadcaster(recver));
     while let Ok((mut conn, addr)) = listener.accept().await {
-        println!("addr: {}", addr);
+        // println!("addr: {}", addr);
         // broadcaster한테 등록하라고 명령
         sender.send(BroadcastCommand::AddMember(addr.to_string(), conn.clone())).await?;
         task::spawn(connection(sender.clone(), addr.to_string(), conn.clone()));
@@ -66,12 +68,23 @@ async fn broadcaster(recv: Receiver<BroadcastCommand>) {
                 members.remove(&key);
             },
             BroadcastCommand::SendMessage(member, bytes) => {
-                // println!("members: {}", members.len());
+                // no thread version
+                // for (k, v) in &mut members {
+                //     v.write_all(&bytes).await;
+                //     sendCount += 1;
+                // }
+                // thread version
+                let mut tasks = Vec::new();
                 for (k, v) in &mut members {
-                    //if v.as_raw_socket() != member.as_raw_socket() {
-                        v.write(&bytes).await;
-                        sendCount += 1;
-                    //}
+                    let copyBytes = bytes.clone();
+                    let mut vCopy = v.clone();
+                    tasks.push(task::spawn(async move {
+                        vCopy.write_all(&copyBytes).await;
+                    }));
+                    sendCount += 1;
+                }
+                for t in tasks {
+                    t.await;
                 }
 
                 let flowTime = get_unix_time() - start;
@@ -122,7 +135,7 @@ async fn connection(sender: Sender<BroadcastCommand>, addr: String, mut stream: 
                         need_bytes = length as usize;
                         step = 2;
                     } else if step == 2 {
-                        println!("[2]step 2: {}", need_bytes);
+                        // println!("[2]step 2: {}", need_bytes);
                         // let hb = recv_buffer2.copy_to_bytes(need_bytes);
                         // if let Err(e) = stream.write_all(&hb[0..need_bytes]).await {
                         //     eprintln!("failed to write to socket; err = {:?}", e);

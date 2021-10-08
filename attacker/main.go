@@ -45,7 +45,7 @@ func main() {
 	sockets := uint64(2000)
 
 	jobs := make(chan int, 1000)
-	for w := 1; w <= 1; w++ {
+	for w := 1; w <= 5; w++ {
 		go worker(w, jobs, nn)
 	}
 	start := time.Now()
