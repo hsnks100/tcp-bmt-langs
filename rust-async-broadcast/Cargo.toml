@@ -7,7 +7,7 @@ edition = "2018"
 
 
 [dependencies]
-time = "0.1.26"
+time = "*"
 async-std = "*"
 bytes = "*"
 anyhow = "*"

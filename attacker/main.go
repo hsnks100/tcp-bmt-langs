@@ -42,7 +42,7 @@ func worker(id int, jobs <-chan int, results chan<- uint64) {
 func main() {
 
 	nn := make(chan uint64, 10000)
-	sockets := uint64(300)
+	sockets := uint64(2000)
 
 	jobs := make(chan int, 1000)
 	for w := 1; w <= 1; w++ {

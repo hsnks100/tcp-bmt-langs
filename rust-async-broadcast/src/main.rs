@@ -6,11 +6,10 @@ use async_std::net::{TcpListener, TcpStream};
 use async_std::sync::{Arc, Mutex};
 use async_std::channel::{Receiver, Sender, self};
 use std::collections::HashMap;
-
-extern crate time;
-use time::PreciseTime;
+// use std::time::Duration;
 
 
+use std::time::{SystemTime, UNIX_EPOCH};
 //use bytes::{Bytes, BytesMut};
 use bytes::{Bytes, BytesMut, Buf, BufMut};
 use core::convert::TryInto;
@@ -42,12 +41,21 @@ async fn entrypoint() -> anyhow::Result<()> {
     Ok(())
 }
 
+fn get_unix_time() -> u128 {
+    let start = SystemTime::now();
+    let since_the_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("Time went backwards");
+    return since_the_epoch.as_millis();
+}
 async fn broadcaster(recv: Receiver<BroadcastCommand>) {
     // let mut members = Vec::new();
     let mut members = HashMap::new();
 
     let mut sendCount: i32 = 0;
-    let mut start = PreciseTime::now();
+    // let mut start = PreciseTime::now();
+    let mut start = get_unix_time();
+
     // 여기선 event를 받아서 뭐 member에 넣거나 send하거나 등등 하고.
     loop {
         match recv.recv().await.unwrap() {
@@ -58,7 +66,7 @@ async fn broadcaster(recv: Receiver<BroadcastCommand>) {
                 members.remove(&key);
             },
             BroadcastCommand::SendMessage(member, bytes) => {
-                println!("members: {}", members.len());
+                // println!("members: {}", members.len());
                 for (k, v) in &mut members {
                     //if v.as_raw_socket() != member.as_raw_socket() {
                         v.write(&bytes).await;
@@ -66,15 +74,12 @@ async fn broadcaster(recv: Receiver<BroadcastCommand>) {
                     //}
                 }
 
-                // whatever you want to do
-                let end = PreciseTime::now();
-                let tt = start.to(end);
-                if tt >= 1 {
-                    println!("SendMessage: {}/s", sendCount/tt);
-                    start = PreciseTime::now();
+                let flowTime = get_unix_time() - start;
+                if flowTime >= 1000 {
+                    println!("SendMessage: {}/s", (sendCount * 1000) as u128/flowTime);
+                    start = get_unix_time();
                     sendCount = 0;
                 }
-                // println!("{} seconds for whatever you did.", start.to(end));
             }
             BroadcastCommand::Exit => {
                 break;
