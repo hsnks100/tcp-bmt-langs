@@ -6,7 +6,7 @@ server:
 
 ```
 cd rust-async-broadcast
-cargo build --release && ./target/release/kk
+cargo build --release && ./target/release/kk # 8080 리슨 
 ```
 
 client:
