@@ -16,29 +16,66 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use bytes::{Bytes, BytesMut, Buf, BufMut};
 use core::convert::TryInto;
 
+enum UsersCommand {
+    AddMember(String, Sender<BroadcastCommand>),
+    DelMember(String),
+    SendAll(Bytes),
+}
+async fn manage_users(recv: Receiver<UsersCommand>) {
+    let mut members: HashMap<String, Sender<BroadcastCommand>>= HashMap::new();
+    let mut sendCount: i32 = 0;
+    // let mut start = PreciseTime::now();
+    let mut start = get_unix_time();
+    loop {
+        match recv.recv().await.unwrap() {
+            UsersCommand::AddMember(addr, member) => {
+                members.insert(addr, member);
+                // let tt = members.clone();
+                // println!("AddMember");
+            },
+            UsersCommand::DelMember(addr) => {
+                // println!("DelMember");
+                members.remove(&addr);
+            },
+            UsersCommand::SendAll(bytes) => {
+                for (k, v) in &mut members {
+                    let mut sendData = bytes.clone();
+                    v.send(BroadcastCommand::SendMessage(sendData)).await.unwrap();
+                    sendCount += 1;
+                }
+                let flowTime = get_unix_time() - start;
+                if flowTime >= 1000 {
+                    println!("SendMessage: {}/s", (sendCount * 1000) as u128/flowTime);
+                    start = get_unix_time();
+                    sendCount = 0;
+                }
+                // sender.send(BroadcastCommand::SendMessage(sendData.freeze())).await.unwrap();
+            }
+
+        }
+    }
+}
 fn main() {
     task::block_on(entrypoint()).expect("failed to initialize!");
 }
 
 enum BroadcastCommand {
-    AddMember(String, TcpStream),
-    DelMember(String),
-    SendMessage(TcpStream, Bytes),
+    SendMessage(Bytes),
     Exit,
 }
 
 async fn entrypoint() -> anyhow::Result<()> {
     let listener = TcpListener::bind("0.0.0.0:8080").await?;
-    let (sender, recver) = channel::unbounded();
-    let broadcaster = task::spawn(broadcaster(recver));
+    let mut members: HashMap<String, Sender<BroadcastCommand>>= HashMap::new();
+    let (mgrsender, mgrrecver) = channel::unbounded(); 
+    task::spawn(manage_users(mgrrecver));
     while let Ok((mut conn, addr)) = listener.accept().await {
-        // println!("addr: {}", addr);
-        // broadcaster한테 등록하라고 명령
-        sender.send(BroadcastCommand::AddMember(addr.to_string(), conn.clone())).await?;
-        task::spawn(connection(sender.clone(), addr.to_string(), conn.clone()));
-    }
-    sender.send(BroadcastCommand::Exit).await?;
-    broadcaster.await;
+        let (sender, recver) = channel::unbounded();
+        let sendChannel = task::spawn(sender_per_client(recver, conn.clone()));
+        mgrsender.send(UsersCommand::AddMember(addr.to_string(), sender.clone())).await?;
+        task::spawn(connection(addr.to_string(), conn.clone(), sender.clone(), mgrsender.clone()));
+    } 
+    println!("ENTRY POINT");
 
     Ok(())
 }
@@ -50,59 +87,26 @@ fn get_unix_time() -> u128 {
         .expect("Time went backwards");
     return since_the_epoch.as_millis();
 }
-async fn broadcaster(recv: Receiver<BroadcastCommand>) {
+async fn sender_per_client(recv: Receiver<BroadcastCommand>, mut v: TcpStream) {
     // let mut members = Vec::new();
-    let mut members = HashMap::new();
 
-    let mut sendCount: i32 = 0;
-    // let mut start = PreciseTime::now();
-    let mut start = get_unix_time();
 
     // 여기선 event를 받아서 뭐 member에 넣거나 send하거나 등등 하고.
     loop {
         match recv.recv().await.unwrap() {
-            BroadcastCommand::AddMember(addr, member) => {
-                members.insert(addr, member);
-            },
-            BroadcastCommand::DelMember(key) => {
-                members.remove(&key);
-            },
-            BroadcastCommand::SendMessage(member, bytes) => {
+            BroadcastCommand::SendMessage(bytes) => {
                 // no thread version
-                // for (k, v) in &mut members {
-                //     v.write_all(&bytes).await;
-                //     sendCount += 1;
-                // }
-                // thread version
-                let mut tasks = Vec::new();
-                for (k, v) in &mut members {
-                    let copyBytes = bytes.clone();
-                    let mut vCopy = v.clone();
-                    tasks.push(task::spawn(async move {
-                        vCopy.write_all(&copyBytes).await;
-                    }));
-                    sendCount += 1;
-                }
-                for t in tasks {
-                    t.await;
-                }
-
-                let flowTime = get_unix_time() - start;
-                if flowTime >= 1000 {
-                    println!("SendMessage: {}/s", (sendCount * 1000) as u128/flowTime);
-                    start = get_unix_time();
-                    sendCount = 0;
-                }
+                v.write_all(&bytes).await;
             }
             BroadcastCommand::Exit => {
+                println!("EXIT MESSAGE");
                 break;
             },
         }
     }
 }
-
-async fn connection(sender: Sender<BroadcastCommand>, addr: String, mut stream: TcpStream) {
-    // connection에서 받아서 broadcaster에 전달하고.
+async fn connection(addr: String, mut stream: TcpStream, sender: Sender<BroadcastCommand>, mgrsender:
+                    Sender<UsersCommand>) {
     
     // let b = Bytes::from_static(b"hello");
     // sender.send(BroadcastCommand::SendMessage(stream.clone(), b)).await.unwrap();
@@ -116,13 +120,17 @@ async fn connection(sender: Sender<BroadcastCommand>, addr: String, mut stream: 
     let mut step: u32 = 1;
     let mut need_bytes: usize = headerSize;
     
+        // sendChannel.await;
 
+    // sender.send(BroadcastCommand::AddMember(addr.to_string(), sender.clone())).await;
     loop {
         let n = match stream.read(&mut buf).await {
             // socket closed
             Ok(n) if n == 0 => {
                 println!("failed to read from socket;");
-                sender.send(BroadcastCommand::DelMember(addr)).await.unwrap();
+                sender.send(BroadcastCommand::Exit).await.unwrap();
+                mgrsender.send(UsersCommand::DelMember(addr)).await.unwrap();
+                // sender.send(BroadcastCommand::DelMember(addr)).await.unwrap();
                 break;
             },
             Ok(n) => {
@@ -142,11 +150,17 @@ async fn connection(sender: Sender<BroadcastCommand>, addr: String, mut stream: 
                         //     return;
                         // }
                         // let b = Bytes::from_static(&hb[0..need_bytes]);
-                        for _ in 1..5 {
-                            let mut sendData = recv_buffer2.clone();
-                            sendData.split_off(need_bytes);
-                            sender.send(BroadcastCommand::SendMessage(stream.clone(), sendData.freeze())).await.unwrap();
-                        }
+                        // for _ in 1..5 {
+                        // }
+                        // for (k, v) in members {
+                        //     let mut sendData = recv_buffer2.clone();
+                        //     sendData.split_off(need_bytes);
+                        //     v.send(BroadcastCommand::SendMessage(sendData.freeze())).await.unwrap();
+                        // }
+                        let mut sendData = recv_buffer2.clone();
+                        sendData.split_off(need_bytes);
+                        mgrsender.send(UsersCommand::SendAll(sendData.freeze())).await.unwrap();
+                        // sender.send(BroadcastCommand::SendMessage(sendData.freeze())).await.unwrap();
                         need_bytes = headerSize;
                         step = 1;
                     }
